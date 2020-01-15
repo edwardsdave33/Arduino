@@ -10,6 +10,14 @@ void setup() {
   pinMode(LED,OUTPUT);
   pinMODE(ENCODER,INPUT);
   
+  while (!buttonIsPushed(BUTTON)) {
+    Serial.println("waiting on button");
+  }
+  delay(100);
+
+  while (buttonIsPushed(BUTTON)) {
+    Serial.println("waiting for release");
+  }
   //Serial.begin(9600); //9600 bits per secondes 
 }
 
