@@ -9,17 +9,24 @@ void setup() {
   Serial.begin(9600); //9600 bits per secondes 
 }
 
-void loop() {
-  pot_val= analogRead(POT);
-  Serial.println(pot_val);
-  pushed =  digitalRead(BUTTON);
-  if(!(pushed)){
-    while(!(pushed)){
-      pushed = digitalRead(BUTTON);
-    }
-  digitalWrite(LEDPIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(pot_val);               // wait for a second
-  digitalWrite(LEDPIN, LOW);    // turn the LED off by making the voltage LOW
-  delay(pot_val);   
-  }
+int buttonIsPushed(int pin) {
+  return !digitalRead(pin);
 }
+
+void loop() {
+
+  while(!buttonIsPushed(BUTTON)) {};
+  delay(100);
+  while(buttonIsPushed(BUTTON)) {};
+  while(true) {
+    pot_val= analogRead(POT);
+    Serial.println(pot_val);
+    digitalWrite(LEDPIN, HIGH);   // turn the LED on (HIGH is the voltage level)
+    delay(pot_val);               // wait for a second
+    digitalWrite(LEDPIN, LOW);    // turn the LED off by making the voltage LOW
+    delay(pot_val);  
+  } 
+  
+  
+
+ 
