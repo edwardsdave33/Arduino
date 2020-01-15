@@ -1,12 +1,17 @@
 
-#define MOTOR1 11
-#define MOTOR2 10
+#define SPEED_M1 6
+#define DIR_M1 7
+#define SPEED_M2 5
+#define DIR_M2 4
 #define LED 3
-#define ENCODER 4
+#define ENCODER 11
+#define BUTTON 10
 void setup() {
   pinMode(BUTTON,INPUT);
-  pinMode(MOTOR1,INPUT);
-  pinMode(MOTOR2,OUTPUT);
+  pinMode(SPEED_M1,OUTPUT);
+  pinMode(DIR_M1,OUTPUT);
+  pinMode(SPEED_M2,OUTPUT);
+  pinMode(DIR_M2,OUTPUT);
   pinMode(LED,OUTPUT);
   pinMODE(ENCODER,INPUT);
   
@@ -16,8 +21,10 @@ void setup() {
 void loop()   {
   trans=0;
   pressed=digitalRead(BUTTON);
-  digitalWrite(MOTOR1, HIGH);   // turn the LED on (HIGH is the voltage level)
-  analogWrite(MOTOR1,100);
+  digitalWrite(DIR_M1, HIGH);  
+  analogWrite(SPEED_M1,100);
+  digitalWrite(DIR_M2, LOW);   
+  analogWrite(SPEED_M2,100);
  
  if(digitalRead(ENCODER){
   digitalWrite(LED,HIGH);
