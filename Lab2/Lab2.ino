@@ -1,82 +1,106 @@
+#include <Arduino_LSM6DS3.h>
 #include <Servo.h>
 
-const int BUTTON = 11;
-const int SPEED_RIGHT = 6;
-const int DIR_RIGHT = 7;
-const int SPEED_LEFT = 5;
-const int DIR_LEFT = 4;
+class Motor {
 
-Servo xyServo;
-Servo zyServo;
-Servo clawServo;
+  public:
 
-volatile int leftEncoderCount = 0;
-volatile int rightEncoderCount = 0;
+    int targetVelocity = 0;
 
-int lastLeftEncoderCount = 0;
-int lastRightEncoderCount = 0;
-int lastMillis = 0;
+    int displacement = 0;
+    int velocity = 0;
+    int acceleration = 0;
 
-void incLeftEncoderCount() { leftEncoderCount++; }
-void incRightEncoderCount() { rightEncoderCount++; }
+    Motor(int speedPinIn, int directionPinIn) {
+      speedPin = speedPinIn;
+      directionPin = directionPinIn;
+
+      pinMode(speedPin, OUTPUT);
+      pinMode(directionPin, OUTPUT);
+
+    }
+
+    void encoderISR() {
+      float travelPerTick = 0.33 / 16;
+      velocity ? displacement += travelPerTick : displacement -= travelPerTick;
+    }
+
+    void update() {
+      updateVelocity();
+      updateAcceleration();
+      updatePower();
+    }
+
+  private:
+
+    int speedPin;
+    int directionPin;
+    int powerValue;
+
+    int lastDisplacment = 0;
+    int lastVelocity = 0;
+    int lastVelocityUpdateTime = 0;
+    int lastAccelerationUpdateTime = 0;
+
+    void updateVelocity() {
+      int t = millis();
+      velocity = (displacement - lastDisplacement) / (t - lastVelocityUpdateTime);
+      lastDisplacment = displacement;
+      lastVelocityUpdateTime = t;
+    }
+
+    void updateAcceleration() {
+      int t = millis();
+      acceleration = (velocity - lastVelocity) / (t - lastAccelerationUpdateTime);
+      lastVelocity = velocity;
+      lastAccelerationUpdateTime = t;
+    }
+
+    void updatePower() {
+      velocity < targetVelocity ? powerValue++ : powerValue--;
+
+      analogWrite(speedPin, powerValue >= 0 ? powerValue : -powerValue);
+
+      if (powerValue) {
+        digitalWrite(directionPin, HIGH);
+      } else {
+        digitalWrite(directionPin, LOW);
+      }
+    }
+
+};
+
+Motor rightMotor (6, 7);
+Motor leftMotor (5, 4);
+
+void rightEncoderISR() {
+  rightMotor.encoderISR();
+}
+
+void leftEncoderISR() {
+  rightMotor.encoderISR();
+}
 
 int buttonIsPushed(int pin) {
-  return !digitalRead(pin);
+    return !digitalRead(pin);
 }
 
 void setup() {
   Serial.begin(9600); //9600 bits per secondes
 
-  while (!buttonIsPushed(BUTTON))
-  {
+  while (!buttonIsPushed(11)) {
     Serial.println("waiting on button");
   }
 
-  delay(100);
-  xyServo.attach(8);
-  zyServo.attach(9);
-  clawServo.attach(10);
+  attachInterrupt(0, rightEncoderISR, CHANGE);
+  attachInterrupt(1, leftEncoderISR, CHANGE);
 
-  pinMode(SPEED_RIGHT, OUTPUT);
-  pinMode(DIR_RIGHT, OUTPUT);
-  pinMode(SPEED_LEFT, OUTPUT);
-  pinMode(DIR_LEFT, OUTPUT);
-
-  attachInterrupt(0, incLeftEncoderCount, CHANGE);
-  attachInterrupt(1, incRightEncoderCount, CHANGE);
   interrupts();
-
-  digitalWrite(DIR_RIGHT, HIGH);
-  digitalWrite(DIR_LEFT, HIGH);
-}
-
-float rps(int currentCount, int lastCount, int currentTime, int lastTime) {
-  return (currentCount - lastCount) / (currentTime - lastTime) / 1000;
-}
-
-float proportionalSpeed(float k, float target_rps, float current_rps) {
-  return k * (target_rps - current_rps);
 }
 
 void loop() {
-  float right_rps = rps(
-      rightEncoderCount,
-      lastRightEncoderCount,
-      millis(),
-      lastMillis
-      );
+  rightMotor.update();
+  leftMotor.update();
 
-  float left_rps = rps(
-      leftEncoderCount,
-      lastLeftEncoderCount,
-      millis(),
-      lastMillis
-      );
-
-  lastMillis = millis();
-
-  analogWrite(SPEED_RIGHT, proportionalSpeed(100, 1, right_rps));
-  analogWrite(SPEED_LEFT, proportionalSpeed(95, 1, left_rps));
-
-  delay(500);
+  delay(100);
 }
