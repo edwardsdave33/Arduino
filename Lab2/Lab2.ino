@@ -1,16 +1,6 @@
 #include <Arduino_LSM6DS3.h>
 #include <Servo.h>
 
-const int BUTTON = 11;
-const int SPEED_RIGHT = 6;
-const int DIR_RIGHT = 7;
-const int SPEED_LEFT = 5;
-const int DIR_LEFT = 4;
-
-Servo xyServo;
-Servo zyServo;
-Servo clawServo;
-
 class RealTimeVar
 {
 public:
@@ -57,8 +47,9 @@ RealTimeVar imuPos;
 RealTimeVar imuVel;
 RealTimeVar imuAccel;
 
-void incLeftEncoderCount() { leftEncoderCount++; }
-void incRightEncoderCount() { rightEncoderCount++; }
+  int lastVelUpdate;
+  int lastAccelUpdate;
+} motor_t;
 
 int buttonIsPushed(int pin)
 {
@@ -77,24 +68,18 @@ void setup()
       ;
   }
 
-  while (!buttonIsPushed(BUTTON))
-  {
-    Serial.println("waiting on button");
-  }
+motor_t leftMotor = {.powerPin = 6, .directionPin = 7, .pid = pid};
+motor_t rightMotor = {.powerPin = 8, .directionPin = 9, .pid = pid};
 
-  delay(100);
-  xyServo.attach(8);
-  zyServo.attach(9);
-  clawServo.attach(10);
+/* Misc */
 
-  pinMode(SPEED_RIGHT, OUTPUT);
-  pinMode(DIR_RIGHT, OUTPUT);
-  pinMode(SPEED_LEFT, OUTPUT);
-  pinMode(DIR_LEFT, OUTPUT);
+float derivative(float f_a, float f_b, float t_a, float t_b) {
+  return (f_b - f_a) / (t_b - t_a);
+};
 
-  attachInterrupt(0, incLeftEncoderCount, CHANGE);
-  attachInterrupt(1, incRightEncoderCount, CHANGE);
-  interrupts();
+float trapRule(float f_a, float f_b, float t_a, float t_b) {
+  return (f_a + f_b) / 2 * (t_b - t_a);
+};
 
   digitalWrite(DIR_RIGHT, HIGH);
   digitalWrite(DIR_LEFT, HIGH);
