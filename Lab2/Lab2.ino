@@ -1,6 +1,12 @@
 #include <Arduino_LSM6DS3.h>
 #include <Servo.h>
 
+const int BUTTON = 11;
+const int SPEED_RIGHT = 6;
+const int DIR_RIGHT = 7;
+const int SPEED_LEFT = 5;
+const int DIR_LEFT = 4;
+
 class RealTimeVar
 {
 public:
@@ -39,6 +45,9 @@ public:
 volatile int leftEncoderCount = 0;
 volatile int rightEncoderCount = 0;
 
+void incLeftEncoderCount() { leftEncoderCount++; }
+void incRightEncoderCount() { rightEncoderCount++; }
+
 RealTimeVar leftEncoderPos;
 RealTimeVar leftEncoderVel;
 RealTimeVar leftEncoderAccel;
@@ -47,9 +56,9 @@ RealTimeVar imuPos;
 RealTimeVar imuVel;
 RealTimeVar imuAccel;
 
-  int lastVelUpdate;
-  int lastAccelUpdate;
-} motor_t;
+Servo xyServo;
+Servo zyServo;
+Servo clawServo;
 
 int buttonIsPushed(int pin)
 {
@@ -60,6 +69,10 @@ void setup()
 {
   Serial.begin(9600);
 
+  while (!buttonIsPushed(BUTTON))
+  {
+  };
+
   if (!IMU.begin())
   {
     Serial.println("Failed to initialize IMU!");
@@ -68,23 +81,18 @@ void setup()
       ;
   }
 
-motor_t leftMotor = {.powerPin = 6, .directionPin = 7, .pid = pid};
-motor_t rightMotor = {.powerPin = 8, .directionPin = 9, .pid = pid};
-
-/* Misc */
-
-float derivative(float f_a, float f_b, float t_a, float t_b) {
-  return (f_b - f_a) / (t_b - t_a);
-};
-
-float trapRule(float f_a, float f_b, float t_a, float t_b) {
-  return (f_a + f_b) / 2 * (t_b - t_a);
-};
+  attachInterrupt(0, incLeftEncoderCount, CHANGE);
+  attachInterrupt(1, incRightEncoderCount, CHANGE);
+  interrupts();
 
   digitalWrite(DIR_RIGHT, HIGH);
   digitalWrite(DIR_LEFT, HIGH);
-  analogWrite(SPEED_LEFT, 80);
-  analogWrite(SPEED_RIGHT, 80);
+  analogWrite(SPEED_LEFT, 120);
+  analogWrite(SPEED_RIGHT, 120);
+
+  xyServo.attach(8);
+  zyServo.attach(9);
+  clawServo.attach(10);
 }
 
 float proportionalSpeed(float k, float target_rps, float current_rps)
@@ -98,11 +106,11 @@ void loop()
   leftEncoderVel.set(leftEncoderPos.derivative());
   leftEncoderAccel.set(leftEncoderVel.derivative());
 
-  Serial.print("Motor Data:\t\t");
+  Serial.print("Motor Data:\tPos:\t");
   Serial.print(leftEncoderPos.get());
-  Serial.print("\t");
+  Serial.print("\tVel:\t");
   Serial.print(leftEncoderVel.get());
-  Serial.print("\t");
+  Serial.print("\tAccel:\t");
   Serial.println(leftEncoderAccel.get());
 
   if (IMU.accelerationAvailable())
@@ -115,13 +123,13 @@ void loop()
     imuVel.set(imuAccel.integral());
     imuPos.set(imuVel.integral());
 
-    Serial.print("IMU Data:\t\t");
+    Serial.print("IMU Data:\tPos:\t");
     Serial.print(imuPos.get());
-    Serial.print('\t');
+    Serial.print("\tVel:\t");
     Serial.print(imuVel.get());
-    Serial.print('\t');
+    Serial.print("\tAccel:\t");
     Serial.println(imuAccel.get());
   }
 
-  delay(2000);
+  delay(1000);
 }
